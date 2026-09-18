@@ -1,0 +1,12 @@
+export type Direction='up'|'left'|'down'|'right';
+export type Game={board:number[];score:number;moves:number;random:()=>number};
+export type Transition={from:number;to:number;value:number;merged:boolean};
+export const DIRECTIONS:Direction[];
+export function slide(board:number[],direction:Direction):{board:number[];score:number;changed:boolean;merges:number[];transitions:Transition[]};
+export function legalMoves(board:number[]):Direction[];
+export function gameOver(board:number[]):boolean;
+export function seededRandom(seed:string):()=>number;
+export function spawn(board:number[],random:()=>number):number[];
+export function newGame(seed:string):Game;
+export function move(game:Game,direction:Direction):boolean;
+export function heuristic(board:number[]):Direction|null;

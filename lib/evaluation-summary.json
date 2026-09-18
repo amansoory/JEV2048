@@ -1,0 +1,162 @@
+[
+  {
+    "policy": "existing",
+    "games": 4,
+    "reached": 0,
+    "reach_percent": 0,
+    "mean_score": 1153,
+    "sd_score": 367.62843560675043,
+    "median_score": 1212,
+    "min_score": 652,
+    "max_score": 1536,
+    "mean_moves": 124.25,
+    "sd_moves": 27.909078570720794,
+    "highest_tiles": [
+      128,
+      128,
+      64,
+      128
+    ],
+    "mean_decision_ms": 225.03018108651912,
+    "p95_decision_ms": 357,
+    "calls": 497,
+    "input_tokens": 507343,
+    "output_tokens": 21126,
+    "errors": 0,
+    "wins_vs_heuristic": 0,
+    "scores": [
+      1232,
+      1536,
+      652,
+      1192
+    ]
+  },
+  {
+    "policy": "immediate",
+    "games": 4,
+    "reached": 0,
+    "reach_percent": 0,
+    "mean_score": 2389,
+    "sd_score": 846.1575897353085,
+    "median_score": 2572,
+    "min_score": 1216,
+    "max_score": 3196,
+    "mean_moves": 204,
+    "sd_moves": 49.8196748283246,
+    "highest_tiles": [
+      64,
+      256,
+      256,
+      256
+    ],
+    "mean_decision_ms": 219.1531862745098,
+    "p95_decision_ms": 329,
+    "calls": 817,
+    "input_tokens": 803467,
+    "output_tokens": 34567,
+    "errors": 1,
+    "wins_vs_heuristic": 2,
+    "scores": [
+      1216,
+      2408,
+      3196,
+      2736
+    ]
+  },
+  {
+    "policy": "lookahead",
+    "games": 4,
+    "reached": 0,
+    "reach_percent": 0,
+    "mean_score": 6162,
+    "sd_score": 1399.5294447301446,
+    "median_score": 6598,
+    "min_score": 4140,
+    "max_score": 7312,
+    "mean_moves": 429.5,
+    "sd_moves": 71.39327699440614,
+    "highest_tiles": [
+      512,
+      256,
+      512,
+      512
+    ],
+    "mean_decision_ms": 226.74505238649593,
+    "p95_decision_ms": 348,
+    "calls": 1739,
+    "input_tokens": 2297426,
+    "output_tokens": 73957,
+    "errors": 21,
+    "wins_vs_heuristic": 4,
+    "scores": [
+      6804,
+      4140,
+      6392,
+      7312
+    ]
+  },
+  {
+    "policy": "heuristic",
+    "games": 4,
+    "reached": 0,
+    "reach_percent": 0,
+    "mean_score": 3183,
+    "sd_score": 1254.8928241088959,
+    "median_score": 3146,
+    "min_score": 1684,
+    "max_score": 4756,
+    "mean_moves": 258.75,
+    "sd_moves": 78.10836489561581,
+    "highest_tiles": [
+      256,
+      128,
+      256,
+      256
+    ],
+    "mean_decision_ms": 0.03229391304347814,
+    "p95_decision_ms": 0.07000000000000028,
+    "calls": 0,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "errors": 0,
+    "wins_vs_heuristic": 0,
+    "scores": [
+      3156,
+      1684,
+      3136,
+      4756
+    ]
+  },
+  {
+    "policy": "search",
+    "games": 4,
+    "reached": 4,
+    "reach_percent": 100,
+    "mean_score": 37880,
+    "sd_score": 16561.122345219643,
+    "median_score": 32294,
+    "min_score": 25528,
+    "max_score": 61404,
+    "mean_moves": 1880.25,
+    "sd_moves": 727.2511601915805,
+    "highest_tiles": [
+      4096,
+      2048,
+      2048,
+      2048
+    ],
+    "mean_decision_ms": 6.470969618401812,
+    "p95_decision_ms": 21.948200000002544,
+    "calls": 0,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "errors": 0,
+    "wins_vs_heuristic": 4,
+    "scores": [
+      61404,
+      27076,
+      25528,
+      37512
+    ]
+  }
+]

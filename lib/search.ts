@@ -1,0 +1,2 @@
+import type {SearchDecision} from '@/public/search-solver';
+export function workerDecision(worker:Worker,board:number[]):Promise<SearchDecision>{return new Promise((resolve,reject)=>{const id=crypto.randomUUID();worker.onmessage=event=>{if(event.data.id!==id)return;if(event.data.error)reject(Error(event.data.error));else resolve(event.data);};worker.onerror=()=>reject(Error('Search worker failed. Retry or restart.'));worker.postMessage({id,board});});}

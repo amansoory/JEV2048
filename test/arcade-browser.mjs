@@ -1,0 +1,163 @@
+import {chromium} from 'playwright';
+import assert from 'node:assert/strict';
+import {mkdir,writeFile,readFile} from 'node:fs/promises';
+import {searchDecision} from '../public/search-solver.js';
+import {legalMoves,heuristic,slide,newGame,move,gameOver} from '../public/engine.js';
+const base=process.env.APP_URL||'http://127.0.0.1:2048';
+const browser=await chromium.launch({channel:'msedge',headless:true});
+const context=await browser.newContext({viewport:{width:1440,height:900},hasTouch:true});
+const page=await context.newPage();
+const errors=[];page.on('pageerror',e=>errors.push(e.message));
+const tick=ms=>new Promise(r=>setTimeout(r,ms));
+const deferred=()=>{let resolve;const promise=new Promise(r=>resolve=r);return {promise,resolve};};
+let gate=null,fail=false,count=0,active=0,maxActive=0,lastRequest=null,poorPolicy=false,pauseAt=0,replayTrace=null;
+const getMoves=async side=>Number(await page.getByTestId(side+'-moves').textContent());
+const waitIdle=()=>page.waitForFunction(()=>!document.querySelector('#step').disabled);
+const readBoard=async label=>page.getByRole('group',{name:label,exact:true}).locator('[data-value]').evaluateAll(tiles=>{const values=Array(16).fill(0);for(const tile of tiles){const m=tile.getAttribute('aria-label').match(/Row (\d), column (\d)/);values[(Number(m[1])-1)*4+Number(m[2])-1]=Number(tile.dataset.value);}return values;});
+try{
+ await page.route('**/api/decision',async route=>{
+  count++;active++;maxActive=Math.max(maxActive,active);
+  const request=route.request().postDataJSON();lastRequest=request;
+  if(gate)await gate.promise;
+  const legal=legalMoves(request.board),direction=replayTrace?replayTrace[request.moves].direction:poorPolicy?legal[0]:heuristic(request.board);
+  if(pauseAt===request.moves+1)await page.locator("#run").click();
+  const body=fail?{error:'Test provider error. No move was applied.',attempted:true,usage:null,ms:25}:{direction,probabilities:Object.fromEntries(legal.map(d=>[d,d===direction?1:0])),ms:25,model:'test-provider',usage:{input_tokens:10,output_tokens:1},attempted:true};
+  const status=fail?502:200;fail=false;active--;await route.fulfill({status,contentType:'application/json',body:JSON.stringify(body)});
+ });
+ await page.goto(base);await page.getByText('Jev ready',{exact:true}).waitFor();
+ await page.evaluate(()=>document.fonts.ready);
+ const desktop=await page.evaluate(()=>({fonts:[...document.fonts].filter(f=>f.status==='loaded').map(f=>f.family),boards:[...document.querySelectorAll('.game-board')].map(e=>e.getBoundingClientRect().bottom)}));
+ assert.ok(desktop.fonts.some(f=>f.includes('dmSans')));assert.ok(desktop.boards.every(y=>y<=900));
+ await page.setViewportSize({width:1366,height:768});assert.ok(await page.locator('.game-board').evaluateAll(els=>els.every(e=>e.getBoundingClientRect().bottom<=innerHeight)));
+ await page.setViewportSize({width:1440,height:900});
+ await page.getByRole('tab',{name:'How it works'}).click();
+ await page.getByText('ILLUSTRATIVE SAMPLE',{exact:true}).waitFor();
+ assert.equal(await page.locator('.how-probs meter').count(),0);
+ await page.getByRole('tab',{name:'How it works'}).focus();await page.keyboard.press('ArrowLeft');
+ await page.waitForFunction(()=>document.querySelector('[role=tab]')?.getAttribute('aria-selected')==='true');
+ assert.equal(await page.getByRole('tab',{name:'Play',exact:true}).getAttribute('aria-selected'),'true');
+
+ const initial=await readBoard('You board');
+ await page.getByRole('heading',{name:'Your move.'}).click().catch(()=>page.locator('.game-intro h1').click());
+ await page.keyboard.press('ArrowLeft');assert.equal(await getMoves('left'),1);
+ const humanAfter=await getMoves('left');await page.getByRole('textbox',{name:'Seed',exact:true}).focus();await page.keyboard.press('ArrowRight');assert.equal(await getMoves('left'),humanAfter);
+ await page.locator('#restart').click();await tick(200);assert.deepEqual(await readBoard('You board'),initial);
+ await page.getByRole('combobox',{name:'Speed',exact:true}).selectOption('step');
+ await page.locator('#step').click();await waitIdle();await tick(180);assert.equal(await getMoves('jev'),1);
+ const before=lastRequest.board.slice(),after=await readBoard('Jev board');
+ await page.getByRole('tab',{name:'How it works'}).click();
+ await page.getByText('REAL JEV DECISION',{exact:true}).waitFor();
+ const beforeLabel=await page.locator('.loop-panel').nth(0).locator('.mini-board').getAttribute('aria-label');
+ assert.equal(beforeLabel,'Before the selected decision: '+before.join(', '));
+ const afterLabel=await page.locator('.loop-panel').nth(3).locator('.mini-board').getAttribute('aria-label');
+ assert.equal(afterLabel,'Actual board after the move and spawn: '+after.join(', '));
+ const d=heuristic(before);assert.equal(await page.locator('.choice-orb b').textContent(),d);
+ const previews=page.locator('.option-previews button');
+ assert.equal(await previews.count(),legalMoves(before).length);
+ for(const dir of legalMoves(before))assert.equal(await page.getByRole('img',{name:dir+' before spawn: '+slide(before,dir).board.join(', '),exact:true}).count(),1);
+ assert.equal(await page.locator('.move-evidence tbody').first().locator('tr').count(),legalMoves(before).length);
+ assert.equal(await page.locator('.move-evidence tbody').first().locator('tr.chosen th').textContent(),({up:'↑',down:'↓',left:'←',right:'→'})[d]+' '+d+' ✓');
+ for(const dir of legalMoves(before)){const row=page.locator('.move-evidence tbody').first().locator('tr').filter({has:page.getByRole('button',{name:'Inspect '+dir,exact:true})});assert.equal(await row.locator('td').nth(0).textContent(),'+'+slide(before,dir).score);}
+ await previews.first().click();assert.equal(await previews.first().getAttribute('aria-pressed'),'true');
+ await page.getByRole('button',{name:'Replay',exact:true}).click();await page.waitForTimeout(3400);
+ assert.equal(await page.getByRole('group',{name:'Replaying the actual move and spawn',exact:true}).count(),1);
+ await page.getByRole('tab',{name:'Play',exact:true}).click();
+
+ // Pause and restart with an outstanding response.
+ gate=deferred();await page.getByRole('combobox',{name:'Speed',exact:true}).selectOption('fast');await page.locator('#run').click();
+ await page.waitForFunction(()=>document.querySelector('.spin'));await tick(60);await page.locator('#run').click();
+ const stopped=count;gate.resolve();gate=null;await waitIdle();await tick(300);assert.equal(count,stopped);
+ gate=deferred();await page.locator('#run').click();await tick(100);
+ await page.locator('#restart').click();assert.equal(await getMoves('jev'),0);
+ const held=count;await page.locator('#run').click();await tick(100);assert.equal(count,held);await page.locator('#run').click();
+ gate.resolve();gate=null;await waitIdle();await tick(200);assert.equal(await getMoves('jev'),0);assert.equal(await page.locator('.error-banner').count(),0);
+ // Retry stays explicit and never advances another bot on failure.
+ fail=true;await page.locator('#step').click();await page.locator('.error-banner').waitFor();assert.equal(await getMoves('jev'),0);
+ await page.getByRole('combobox',{name:'Speed',exact:true}).selectOption('step');await page.locator('#retry').click();await waitIdle();assert.equal(await getMoves('jev'),1);
+ await page.getByRole('button',{name:'Jev vs Heuristic',exact:true}).click();await page.locator('#step').click();await waitIdle();assert.equal(await getMoves('left'),1);assert.equal(await getMoves('jev'),1);
+ assert.equal(await page.locator('.recharts-line').count(),2);
+ await page.getByRole('slider',{name:'Inspect chart move'}).fill('1');
+ assert.match(await page.locator('.chart-inspector output').textContent(),/Heuristic:/);
+ // Verify hovered chart tooltip and actual path geometry.
+ await page.locator('.recharts-surface').hover({position:{x:150,y:90}});
+ await page.locator('.recharts-tooltip-wrapper').waitFor({state:'visible'});
+ assert.ok(await page.locator('.recharts-line-curve').first().getAttribute('d'));
+
+ await page.setViewportSize({width:390,height:844});
+ await page.mouse.move(0,0);await tick(250);
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+ await page.getByRole('button',{name:'You vs Jev',exact:true}).click();
+ await page.getByRole('button',{name:'Move left',exact:true}).tap();assert.equal(await getMoves('left'),1);
+ const touchBoard=page.getByRole('group',{name:'You board',exact:true});await touchBoard.scrollIntoViewIfNeeded();
+ const bounds=await touchBoard.boundingBox(),cdp=await context.newCDPSession(page);
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:bounds.x+50,y:bounds.y+bounds.height/2,id:0}]});
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:bounds.x+170,y:bounds.y+bounds.height/2,id:0}]});
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+ await tick(150);
+ assert.equal(await getMoves('left'),2);
+ await page.getByRole('tab',{name:'How it works'}).click();assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+ await page.getByRole('tab',{name:'Play',exact:true}).click();
+ const poorGame=newGame('first-light');while(!gameOver(poorGame.board))move(poorGame,legalMoves(poorGame.board)[0]);pauseAt=poorGame.moves;
+ poorPolicy=true;await page.getByRole('button',{name:'Jev vs Heuristic',exact:true}).click();
+ await page.getByRole('combobox',{name:'Speed',exact:true}).selectOption('fast');await page.locator('#run').click();
+ await page.waitForFunction(()=>document.querySelectorAll('.board-over').length===1);await tick(100);
+ assert.equal(await page.locator('.winner-banner').count(),0);const frozen=await getMoves('jev'),survivor=await getMoves('left'),callsBefore=count;
+ await page.locator('#step').click();await tick(100);assert.equal(await getMoves('jev'),frozen);assert.equal(await getMoves('left'),survivor+1);assert.equal(count,callsBefore);
+ pauseAt=0;await page.locator('#run').click();await page.locator('.winner-banner').waitFor({timeout:60000});
+ assert.equal(await page.locator('.board-over').count(),2);
+ assert.ok(await getMoves('left')>await getMoves('jev'),'The heuristic should continue after the weaker test policy finishes');
+ poorPolicy=false;
+ const dev=JSON.parse(await readFile('artifacts/evaluation/pilot-development-cost-2026-lookahead.json','utf8'));assert.equal(dev.complete,true);replayTrace=dev.turns;
+ await page.getByRole('textbox',{name:'Seed',exact:true}).fill('development-cost-2026');await page.locator('#restart').click();
+ const fixed=newGame('development-cost-2026');while(!gameOver(fixed.board))move(fixed,heuristic(fixed.board));pauseAt=fixed.moves;
+ await page.locator('#run').click();await page.waitForFunction(()=>document.querySelectorAll('.board-over').length===1);await tick(100);
+ assert.equal(await page.locator('.winner-banner').count(),0);const frozenLeft=await getMoves('left'),jevBefore=await getMoves('jev');await page.locator('#step').click();await waitIdle();assert.equal(await getMoves('left'),frozenLeft);assert.equal(await getMoves('jev'),jevBefore+1);
+ pauseAt=0;await page.locator('#run').click();await page.locator('.winner-banner').waitFor({timeout:60000});replayTrace=null;
+ // Real browser worker: third mode stays legal and deterministic against the Node solver.
+ await page.getByRole('textbox',{name:'Seed',exact:true}).fill('search-browser');await page.getByRole('button',{name:'Jev vs Search',exact:true}).click();
+ await page.getByRole('combobox',{name:'Speed',exact:true}).selectOption('step');
+ const expectedSearch=newGame('search-browser');const picked=searchDecision(expectedSearch.board);move(expectedSearch,picked.direction);
+ await page.locator('#step').click();await waitIdle();assert.equal(await getMoves('left'),1);assert.equal(await getMoves('jev'),1);assert.deepEqual(await readBoard('Search solver board'),expectedSearch.board);
+ assert.match(await page.locator('.match-metrics').textContent(),/2048 not reached/);
+ await page.getByRole('combobox',{name:'Speed',exact:true}).selectOption('fast');await page.locator('#run').click();await page.waitForFunction(()=>Number(document.querySelector('[data-testid=left-moves]').textContent)>=5);await page.locator('#run').click();await waitIdle();const searchStopped=await getMoves('left');await tick(100);assert.equal(await getMoves('left'),searchStopped);
+ await page.locator('#restart').click();assert.equal(await getMoves('left'),0);assert.equal(await getMoves('jev'),0);
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+ assert.equal(maxActive,1);assert.deepEqual(errors,[]);
+ console.log('Browser regressions passed: fonts, boards above fold, keyboard and touch, both modes, chart, accurate sample/live replay, Pause/Restart in flight, no overlap, Retry.');
+ await page.unroute('**/api/decision');
+
+ if(process.env.LIVE_JEV==='1'){
+  await page.setViewportSize({width:1440,height:900});await page.goto(base);await page.getByText('Jev ready',{exact:true}).waitFor();
+  await page.getByRole('button',{name:'Jev vs Search',exact:true}).click();
+  const results=[];let requests=0,concurrent=0,max=0;
+  const target=8;
+  await page.route('**/api/decision',async route=>{
+    concurrent++;max=Math.max(max,concurrent);requests++;
+    const input=route.request().postDataJSON(),response=await route.fetch(),output=await response.json();
+    assert.equal(response.status(),200,output.error);assert.ok(legalMoves(input.board).includes(output.direction));
+    results.push({input,output});
+    if(requests===target)await page.locator('#run').click();
+    concurrent--;await route.fulfill({response});
+  });
+  await page.getByRole('combobox',{name:'Speed',exact:true}).selectOption('fast');await page.locator('#run').click();
+  await page.waitForFunction(n=>document.querySelector('[data-testid=jev-moves]').textContent===String(n),target,{timeout:60000});
+  await waitIdle();await tick(500);assert.equal(requests,target);assert.equal(max,1);
+  assert.equal(await getMoves('left'),target);
+  await mkdir('artifacts',{recursive:true});
+  await page.screenshot({path:'artifacts/after-desktop.png',fullPage:true});
+  await page.screenshot({path:'artifacts/after-desktop.jpg',fullPage:true,quality:55});
+  await page.setViewportSize({width:390,height:844});
+  await page.screenshot({path:'artifacts/after-mobile.png',fullPage:true});
+  await page.screenshot({path:'artifacts/after-mobile.jpg',fullPage:true,quality:55});
+  await page.getByRole('tab',{name:'How it works'}).click();
+  await page.screenshot({path:'artifacts/how-mobile.png',fullPage:true});
+  await page.screenshot({path:'artifacts/how-mobile.jpg',fullPage:true,quality:55});
+  await page.setViewportSize({width:1440,height:900});
+  const selected=await page.locator('#replay-select option').nth(3).getAttribute('value');await page.locator('#replay-select').selectOption(selected);
+  await page.getByRole('button',{name:'Replay',exact:true}).click();await tick(3500);
+  await page.screenshot({path:'artifacts/how-desktop.png',fullPage:true});
+  await page.screenshot({path:'artifacts/how-desktop.jpg',fullPage:true,quality:55});
+  await writeFile('artifacts/arcade-live-verification.json',JSON.stringify({requests,maxConcurrent:max,results},null,2));
+  console.log(JSON.stringify({live:true,legalMoves:requests,maxConcurrent:max,pauseVerified:true,model:results[0].output.model}));
+ }
+}finally{if(gate)gate.resolve();await browser.close();}

@@ -1,0 +1,10 @@
+{
+  "repo": "gabrielecirulli/2048",
+  "commit": "478b6ec346e3787f589e4af751378d06ded4cbbc",
+  "files": [
+    "LICENSE.txt",
+    "js/game_manager.js",
+    "js/grid.js",
+    "js/tile.js"
+  ]
+}
