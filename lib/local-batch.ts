@@ -1,0 +1,9 @@
+import {newGame,move,type Direction,type Game} from '@/public/engine';
+export type LocalPolicy='search'|'ntuple';
+export type BatchInput={policy:LocalPolicy;seed:string;board:number[];score:number;moves:number;session:string;generation:number;sequence:number};
+export type BatchMove={direction:Direction;ms:number;model?:string;evidence?:unknown};
+export type BatchSnapshot={board:number[];score:number;moves:number;highest:number};
+export type BatchResult={session:string;generation:number;sequence:number;records:BatchMove[];snapshots:BatchSnapshot[];final:BatchSnapshot;elapsedMs:number;computeMs:number;finished:boolean};
+export function resumeGame(seed:string,board:number[],score:number,moves:number):Game{const game=newGame(seed);for(let i=0;i<moves*2;i++)game.random();return {...game,board:board.slice(),score,moves};}
+export function validateBatch(input:BatchInput,result:BatchResult){if(result.session!==input.session||result.generation!==input.generation||result.sequence!==input.sequence||!Array.isArray(result.records)||result.records.length>100)throw Error('Invalid or stale local batch.');const game=resumeGame(input.seed,input.board,input.score,input.moves);for(const r of result.records){if(!Number.isFinite(r.ms)||r.ms<0||!move(game,r.direction))throw Error('Invalid local batch move.');}if(game.score!==result.final.score||game.moves!==result.final.moves||JSON.stringify(game.board)!==JSON.stringify(result.final.board))throw Error('Local batch spawn stream mismatch.');}
+export async function requestLocalBatch(input:BatchInput,signal:AbortSignal):Promise<BatchResult>{const response=await fetch('/api/local-batch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input),signal});const result=await response.json();if(!response.ok)throw Error(result.error||'Local batch failed.');return result;}

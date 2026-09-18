@@ -1,0 +1,5 @@
+# Preserve verified upstream bytes across Windows and Linux checkouts.
+deploy/ntuple/TDL2048/** -text
+deploy/ntuple/native/ntuple-bridge.cpp -text
+deploy/ntuple/Dockerfile text eol=lf
+deploy/ntuple/*.py text eol=lf

@@ -22,6 +22,6 @@ export default function Board({board,last,label,onMove,over=false}:{board:number
       {sliding&&last?transitions.map(t=><motion.div key={last.id+'-'+t.from} aria-hidden className={`game-tile tile-${t.value}`} initial={position(t.from)} animate={position(t.to)} transition={{duration:.12,ease:'easeOut'}}>{t.value}</motion.div>):
         board.map((v,i)=>v?<div key={`${last?.id||'initial'}-${i}`} className={`game-tile tile-${v} ${last?.spawn.index===i?'tile-spawn':merged.has(i)?'tile-merge':''}`} style={position(i)} aria-label={`Row ${Math.floor(i/4)+1}, column ${i%4+1}: ${v}`} data-value={v}>{v}</div>:null)}
     </div>
-    {over&&<div className="board-over"><span>Board complete</span><strong>{Math.max(...board).toLocaleString()} highest tile</strong></div>}
+    {over&&<div className="board-over"><span>Game over</span><strong>{Math.max(...board).toLocaleString()} highest tile</strong></div>}
   </div>;
 }

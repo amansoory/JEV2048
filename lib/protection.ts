@@ -19,33 +19,29 @@ export function session(req:NextRequest){
 export function visitorIP(req:Request){return (req.headers.get('x-vercel-forwarded-for')||req.headers.get('x-forwarded-for')||'unknown').split(',')[0].trim();}
 const acquireScript=`
 local now=tonumber(ARGV[1])
-redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', now)
-if redis.call('EXISTS',KEYS[2])==1 then return 1 end
+redis.call('ZREMRANGEBYSCORE',KEYS[1],'-inf',now)
+if redis.call('EXISTS',KEYS[2])==1 or redis.call('EXISTS',KEYS[6])==1 then return 1 end
 if redis.call('ZCARD',KEYS[1])>=8 then return 2 end
-local ipCount=tonumber(redis.call('GET',KEYS[3]) or '0')
-local allCount=tonumber(redis.call('GET',KEYS[4]) or '0')
-if ipCount>=600 or allCount>=1200 then return 3 end
-redis.call('SET',KEYS[2],ARGV[2],'PX',25000)
-redis.call('ZADD',KEYS[1],now+25000,ARGV[2])
-redis.call('PEXPIRE',KEYS[1],30000)
-redis.call('INCR',KEYS[3])
-redis.call('EXPIRE',KEYS[3],120)
-redis.call('INCR',KEYS[4])
-redis.call('EXPIRE',KEYS[4],120)
+if tonumber(redis.call('GET',KEYS[3]) or '0')>=300 or tonumber(redis.call('GET',KEYS[4]) or '0')>=1200 or tonumber(redis.call('GET',KEYS[7]) or '0')>=180 then return 3 end
+if ARGV[4]=='jev' and tonumber(redis.call('GET',KEYS[5]) or '0')>=tonumber(ARGV[3]) then return 4 end
+redis.call('SET',KEYS[2],ARGV[2],'PX',60000)
+redis.call('SET',KEYS[6],ARGV[2],'PX',60000)
+redis.call('ZADD',KEYS[1],now+60000,ARGV[2])
+redis.call('PEXPIRE',KEYS[1],65000)
+for _,i in ipairs({3,4,7}) do redis.call('INCR',KEYS[i]);redis.call('EXPIRE',KEYS[i],120) end
+if ARGV[4]=='jev' then redis.call('INCR',KEYS[5]);redis.call('EXPIRE',KEYS[5],172800) end
 return 0`;
-const releaseScript=`if redis.call('GET',KEYS[2])==ARGV[1] then redis.call('DEL',KEYS[2]) end redis.call('ZREM',KEYS[1],ARGV[1]) return 1`;
+const releaseScript=`for _,i in ipairs({2,6}) do if redis.call('GET',KEYS[i])==ARGV[1] then redis.call('DEL',KEYS[i]) end end redis.call('ZREM',KEYS[1],ARGV[1]) return 1`;
 const localLocks=new Set<string>();
-export async function acquire(req:NextRequest,match:string):Promise<{release:()=>Promise<void>;error?:string;status?:number}> {
-  if(!publicRequest(req)){
-    if(localLocks.has(match))return {release:async()=>{},error:'A decision is still finishing. Retry in a moment.',status:409};
-    localLocks.add(match);return {release:async()=>{localLocks.delete(match);}};
-  }
-  if(!configured())return {release:async()=>{},error:'Public Jev play is not enabled yet. Shared protection needs configuration.',status:503};
-  const sid=session(req);if(!sid)return {release:async()=>{},error:'Please complete the human check to play Jev.',status:401};
-  const redis=Redis.fromEnv(),lease=randomUUID(),minute=Math.floor(Date.now()/60000);
-  const ip=sign(visitorIP(req)).slice(0,24);
-  const keys=['arcade:active','arcade:session:'+sid,'arcade:ip:'+ip+':'+minute,'arcade:rate:'+minute];
-  const result=Number(await redis.eval(acquireScript,keys,[Date.now(),lease]));
-  if(result!==0)return {release:async()=>{},error:result===1?'A decision is still finishing. Retry in a moment.':'The arcade is busy. Please retry shortly.',status:429};
-  return {release:async()=>{await redis.eval(releaseScript,keys.slice(0,2),[lease]);}};
+export async function acquire(req:NextRequest,match:string,kind:'jev'|'native'='jev'):Promise<{release:()=>Promise<void>;error?:string;status?:number;code?:string}> {
+ const noop=async()=>{};
+ if(!publicRequest(req)){const key=kind+':'+match;if(localLocks.has(key))return {release:noop,error:'A decision is still finishing. Retry shortly.',status:409,code:'busy'};localLocks.add(key);return {release:async()=>{localLocks.delete(key);}};}
+ if(!configured())return {release:noop,error:'Public inference needs shared protection configured.',status:503,code:'unavailable'};
+ const sid=session(req);if(!sid)return {release:noop,error:'Complete the human check to enable inference.',status:401,code:'verification_required'};
+ const redis=Redis.fromEnv(),lease=randomUUID(),minute=Math.floor(Date.now()/60000),ip=sign(visitorIP(req)).slice(0,24);
+ const keys=['study:active:'+kind,'study:board:'+sid+':'+match,'study:ip:'+ip+':'+minute,'study:rate:'+minute,'study:jev:daily:'+Math.floor(Date.now()/86400000),'study:session-active:'+kind+':'+sid,'study:session-rate:'+sid+':'+minute];
+ const configuredBudget=Number(process.env.PUBLIC_DAILY_JEV_CALLS??12000),budget=Number.isSafeInteger(configuredBudget)&&configuredBudget>=0?configuredBudget:0;
+ const result=Number(await redis.eval(acquireScript,keys,[Date.now(),lease,budget,kind]));
+ if(result!==0)return {release:noop,error:result===4?'The daily Jev quota has been reached. Retry tomorrow.':result===1?'Another request is finishing for this session. Retry shortly.':'The shared request limit has been reached. Retry shortly.',status:429,code:result===4?'quota_exhausted':'rate_limit'};
+ return {release:async()=>{await redis.eval(releaseScript,keys,[lease]);}};
 }

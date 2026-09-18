@@ -1,0 +1,41 @@
+export const evidenceTerms=[
+ {keys:['current_board'],name:'Current board',meaning:'The 16 current tile values. Zero means an empty cell.'},
+ {keys:['resulting_board'],name:'Resulting board',meaning:'The exact board after a legal slide and its merges, before a random tile appears.'},
+ {keys:['immediate_merge_reward'],name:'Immediate merge reward',meaning:'Points earned by this move, calculated from the merged tile values.'},
+ {keys:['empty_cells','empty'],name:'Empty cells',meaning:'Unoccupied cells. Candidate counts are before spawning; future distributions describe searched or enumerated boards.'},
+ {keys:['available_merges'],name:'Available merges',meaning:'The maximum number of tile pairs that can merge in one legal move from that board.'},
+ {keys:['monotonicity_penalty','monotonicity'],name:'Monotonicity',meaning:'A penalty for rank changes that interrupt ordered rows and columns. Lower means more ordered; ranks are log₂(tile value).'},
+ {keys:['smoothness_penalty'],name:'Smoothness',meaning:'The sum of rank differences between adjacent occupied cells. Lower means neighboring values are more similar.'},
+ {keys:['largest_tile_positions'],name:'Largest-tile positions',meaning:'Row and column for every tile tied for largest, starting at 1.'},
+ {keys:['largest_tile_in_corner'],name:'Largest tile in a corner',meaning:'Whether any current largest tile occupies one of the four corners.'},
+ {keys:['corner_stability'],name:'Corner stability',meaning:'1 if a largest tile remains in a corner that held a largest tile before the move; otherwise 0.'},
+ {keys:['legal_next_moves','mobility','best_legal_move_count'],name:'Mobility',meaning:'Number of legal directions, from 0 to 4. Best-recovery mobility is the largest such count obtainable with one reply.'},
+ {keys:['congestion','occupied_cells','spawn_fills_board'],name:'Congestion',meaning:'Occupied-cell count and whether the next spawn would fill the only remaining empty cell. A full board can still have legal merges.'},
+ {keys:['next_spawn'],name:'Possible next spawns',meaning:'All possible empty-cell placements of a 2 or 4, weighted by 90% and 10% respectively. This is an enumeration, not knowledge of the actual next tile.'},
+ {keys:['spawn_sensitivity'],name:'Spawn sensitivity',meaning:'Feature conditions report the range of each feature across possible next spawns. Search conditions report future spread and congestion probabilities within the search horizon.'},
+ {keys:['worst_case_structural_loss'],name:'Worst structural loss',meaning:'Largest deterioration of each feature across the possible next spawns. Different features can have different worst spawns; this is not one joint outcome.'},
+ {keys:['best_recovery_after_next_spawn','best_empty_cells'],name:'Recovery after a spawn',meaning:'For each possible spawn, code finds the best immediate reply separately for empty cells and mobility, then summarizes those values.'},
+ {keys:['bounded_future','one_reply','two_replies'],name:'One- and two-step structural summaries',meaning:'Possible spawns followed by one or two reply moves. Legal replies are weighted equally. These describe the action space, not optimal play or a forecast.'},
+ {keys:['player_depth','spawn_layers','probability_cutoff'],name:'Search bounds',meaning:'Three player plies, two spawn layers and a 0.0001 path-probability cutoff. Low-probability paths stop early and use the fixed board evaluator.'},
+ {keys:['normalized_expected_value'],name:'Normalized expected search value',meaning:'The bounded expectimax value on a scale shared with all candidates and their worst outcomes. Higher is better according to this evaluator, not a chance of winning.'},
+ {keys:['normalized_worst_value'],name:'Normalized worst search value',meaning:'The lowest evaluated leaf reached within the bounded search, on the same scale as expected values. It does not cover every possible future.'},
+ {keys:['normalized_variance'],name:'Normalized search variance',meaning:'Weighted variation in evaluated future quality, divided by the squared normalization range.'},
+ {keys:['cutoff_probability'],name:'Cutoff probability',meaning:'Probability mass whose search stopped at the low-probability cutoff. Those branches are approximations.'},
+ {keys:['searched_dead_end_probability'],name:'Searched dead ends',meaning:'Weighted probability of game-over states encountered within the searched horizon. This is not the probability of eventually losing.'},
+ {keys:['future_empty_cells','probabilities'],name:'Future empty-cell distribution',meaning:'Expected spread of empty cells under the bounded search. Histogram keys 0–16 are cell counts; values are their probability mass.'},
+ {keys:['corner_chain','corner_chain_retention','anchored','highest_at_reference_corner_probability','probability_declines','before'],name:'High-tile chain retention',meaning:'Tracks the largest tile at the reference corner and descending links along its edge. The reference is a largest-tile corner, or the nearest corner if none is occupied by a largest tile. Summaries include how often the chain weakens.'},
+ {keys:['recoverability','merge_pairs','probability_no_merge_pair','probability_at_most_one_legal_move'],name:'Search recoverability',meaning:'Future mobility, adjacent equal occupied pairs, and probabilities of having no pair or at most one legal direction. These are indicators within the search, not guaranteed recovery.'},
+ {keys:['empty_cells_sd','mobility_sd','probability_at_most_one_empty'],name:'Search vulnerability to spawns',meaning:'Spread in future space and mobility, plus the probability of ending the searched horizon with at most one empty cell.'},
+ {keys:['normalized_afterstate_value'],name:'Normalized learned value',meaning:'The pretrained n-tuple action value minus immediate reward, min-max normalized across this decision. Equal values map to 0.5. It estimates board value, not winning probability.'},
+ {keys:['margin_from_other_candidates'],name:'Learned-value margin',meaning:'A candidate’s normalized learned value minus the mean normalized value of the other legal candidates.'},
+ {keys:['mean','min','max','variance','sd','p10','median','p90'],name:'Distribution statistics',meaning:'Mean is probability-weighted; min/max are observed bounds. Variance and SD measure spread. p10, median and p90 are weighted percentiles. The applicable spawn/reply weighting is defined above.'}
+];
+export function presentTerms(value:unknown){const found=new Set<string>();function visit(v:any){if(!v||typeof v!=='object')return;for(const [key,child]of Object.entries(v)){found.add(key);visit(child);}}visit(value);return evidenceTerms.filter(t=>t.keys.some(k=>found.has(k)));}
+export const outputTerms=[
+ ['Choice probability','Jev’s reported preference for a supplied candidate, not a win probability.'],
+ ['Probability margin and entropy','Margin is highest minus second-highest probability. Entropy is calculated locally from normalized probabilities and describes output spread, not move quality.'],
+ ['Agreement and overrides','Compare the chosen direction with a specialist’s deterministic choice on the same board. An override is simply a disagreement. Ties can also disagree. Missing audits remain unavailable.'],
+ ['Timing','Preparation, native work, HTTP wait and browser transfer are different stages. Deferred audits and the configured between-move delay are excluded from decision time. Unknown durations are not shown as zero.'],
+ ['Calls, retries and tokens','Calls count provider attempts; retries count additional HTTP attempts. Token counts come from reported usage. Missing usage and unconfigured cost remain unavailable.'],
+ ['Game and spawn record','Score, move count, before/after boards and spawn cell/value describe what happened. The seed and spawn sequence support replay. They do not reveal future spawns to Jev.']
+];

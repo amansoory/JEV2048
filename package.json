@@ -5,15 +5,22 @@
   "type": "module",
   "scripts": {
     "start": "next start --hostname 127.0.0.1 --port 2048",
-    "test": "tsx --test test/engine.test.js test/server.test.js test/arcade.test.ts test/policy.test.js test/search.test.js",
-    "test:browser": "node test/arcade-browser.mjs",
+    "test": "tsx --test test/engine.test.js test/server.test.js test/arcade.test.ts test/policy.test.js test/search.test.js test/lab.test.ts",
+    "test:browser": "node test/lab-browser.mjs",
     "dev": "next dev --hostname 127.0.0.1 --port 2048",
     "build": "next build",
     "typecheck": "tsc --noEmit",
     "legacy": "node server.js",
     "evaluate:pilot": "node test/evaluate-complete.mjs pilot",
     "evaluate:complete": "node test/evaluate-complete.mjs holdout",
-    "evaluate:search": "node test/evaluate-search.mjs holdout"
+    "evaluate:search": "node test/evaluate-search.mjs holdout",
+    "test:browser:legacy": "node test/arcade-browser.mjs",
+    "evaluate:lab:pilot": "node test/evaluate-lab.mjs pilot",
+    "evaluate:lab": "node test/evaluate-lab.mjs evaluation",
+    "evaluate": "node study/run.mjs",
+    "test:study": "node --test study/study.test.mjs study/report.test.mjs",
+    "test:release": "tsx --test test/analytics.test.ts test/request-path.test.ts test/play-selector.test.ts test/hosted-native.test.ts test/blind.test.ts test/ultra.test.ts test/lab.test.ts",
+    "test:release:browser": "node test/ready.browser.mjs && node test/ultra-ui.browser.mjs"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",

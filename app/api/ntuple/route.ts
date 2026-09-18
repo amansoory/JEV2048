@@ -1,0 +1,9 @@
+import {NextRequest,NextResponse} from 'next/server';
+import {sameOrigin,acquire} from '@/lib/protection';
+import {legalMoves} from '@/public/engine';
+import {modelDecision,validNativeBoard,ModelError} from '@/lib/ntuple-provider';
+export const runtime='nodejs';export const dynamic='force-dynamic';export const maxDuration=30;
+export async function POST(req:NextRequest){if(!sameOrigin(req))return NextResponse.json({error:'Origin refused',code:'forbidden'},{status:403});let body:any;
+ try{const raw=await req.text();if(raw.length>1024)throw Error();body=JSON.parse(raw);if(Object.keys(body).some(k=>!['board','match','generation','sequence'].includes(k))||!validNativeBoard(body.board))throw Error();if(body.match!==undefined&&(typeof body.match!=='string'||!/^[\w-]{1,80}$/.test(body.match)))throw Error();for(const k of ['generation','sequence'])if(body[k]!==undefined&&(!Number.isSafeInteger(body[k])||body[k]<0))throw Error();}catch{return NextResponse.json({error:'Invalid or unsupported native board.',code:'invalid_board'},{status:400});}
+ if(!legalMoves(body.board).length)return NextResponse.json({error:'This board has finished.',code:'game_over'},{status:409});let release:(()=>Promise<void>)|undefined;
+ try{const lock=await acquire(req,body.match??'native','native');if(lock.error)return NextResponse.json({error:lock.error,code:lock.code},{status:lock.status});release=lock.release;const result=await modelDecision(body.board,req.signal);return NextResponse.json({...result,generation:body.generation,sequence:body.sequence},{headers:{'Cache-Control':'no-store'}});}catch(e){return NextResponse.json({error:e instanceof ModelError?e.message:'The learned model is unavailable. Retry shortly.',code:e instanceof ModelError?e.code:'unavailable'},{status:e instanceof ModelError?e.status:503});}finally{await release?.().catch(()=>{});}}

@@ -1,0 +1,3 @@
+// Jev reports probabilities rounded to two decimals on some responses.
+// Preserve the reported values; do not silently renormalize them.
+export function validDistribution(probabilities,legal){if(!probabilities||typeof probabilities!=='object'||Object.keys(probabilities).length!==legal.length||!legal.every(d=>Object.hasOwn(probabilities,d)&&Number.isFinite(probabilities[d])&&probabilities[d]>=0&&probabilities[d]<=1))return false;const values=Object.values(probabilities),rounded=values.every(v=>Math.abs(v*100-Math.round(v*100))<1e-8),tolerance=rounded?legal.length*.005+1e-9:.001;return Math.abs(values.reduce((s,v)=>s+v,0)-1)<=tolerance;}

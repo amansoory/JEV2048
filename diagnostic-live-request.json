@@ -1,0 +1,19 @@
+{
+  "request_time_utc": "2026-09-18T17:05:36.866294+00:00",
+  "completed_time_utc": "2026-09-18T17:05:37.063051+00:00",
+  "elapsed_ms": 203,
+  "local_url": "http://127.0.0.1:2048/api/decision",
+  "http_status": 200,
+  "match": "diagnostic-1789751136",
+  "attempted": true,
+  "model": "jev-1.13.0",
+  "usage": {
+    "input_tokens": 495,
+    "output_tokens": 45
+  },
+  "direction": "left",
+  "ms": 144,
+  "error": null,
+  "code": null,
+  "retryable": null
+}

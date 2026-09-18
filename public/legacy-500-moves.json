@@ -1,0 +1,109 @@
+{
+  "protocol": "Post-hoc snapshot at move 500 of three previously saved complete legacy evaluation games per policy. No new calls or games. Not a frozen evaluation of current anonymous-candidate bots.",
+  "seeds": [
+    "lab-eval-11",
+    "lab-eval-29",
+    "lab-eval-47"
+  ],
+  "moves": 500,
+  "rows": [
+    {
+      "seed": "lab-eval-11",
+      "feature": {
+        "score_at_500": 7312,
+        "final_score": 10796,
+        "final_moves": 642
+      },
+      "assisted": {
+        "score_at_500": 9212,
+        "final_score": 148992,
+        "final_moves": 6099
+      },
+      "search": {
+        "score_at_500": 7336,
+        "final_score": 69596,
+        "final_moves": 3274
+      }
+    },
+    {
+      "seed": "lab-eval-29",
+      "feature": {
+        "score_at_500": 7248,
+        "final_score": 11924,
+        "final_moves": 704
+      },
+      "assisted": {
+        "score_at_500": 7444,
+        "final_score": 133156,
+        "final_moves": 5618
+      },
+      "search": {
+        "score_at_500": 7224,
+        "final_score": 80676,
+        "final_moves": 3740
+      }
+    },
+    {
+      "seed": "lab-eval-47",
+      "feature": {
+        "score_at_500": 7440,
+        "final_score": 10460,
+        "final_moves": 611
+      },
+      "assisted": {
+        "score_at_500": 7308,
+        "final_score": 62100,
+        "final_moves": 2916
+      },
+      "search": {
+        "score_at_500": 7332,
+        "final_score": 77280,
+        "final_moves": 3563
+      }
+    }
+  ],
+  "means": {
+    "feature": 7333.333333333333,
+    "assisted": 7988,
+    "search": 7297.333333333333
+  },
+  "feature_lead_percent": 0.4933308971313721,
+  "sources": [
+    {
+      "path": "artifacts/policy-lab-continuous/evaluation-lab-eval-11-feature.json",
+      "sha256": "f292981462644ffcc06d74e0d985953f3c90f975d75dce5fce5ff546d8b687f9"
+    },
+    {
+      "path": "artifacts/policy-lab-continuous/evaluation-lab-eval-11-assisted.json",
+      "sha256": "cd0940e5857f2ed7565d355c4f3067c7c2f913dfbbebc7d143133bb5c52d4e88"
+    },
+    {
+      "path": "artifacts/policy-lab-continuous/evaluation-lab-eval-11-search.json",
+      "sha256": "aa70186ae3c784acfbdbe691f357ba15bb63974f691482e43a3c4c3de7748ead"
+    },
+    {
+      "path": "artifacts/policy-lab-continuous/evaluation-lab-eval-29-feature.json",
+      "sha256": "1fe371dc1e8987d96b20d13cd9c71af6f9eb6cecce81329b33f5d730c670082c"
+    },
+    {
+      "path": "artifacts/policy-lab-continuous/evaluation-lab-eval-29-assisted.json",
+      "sha256": "1888b3160e68f5d6a938e41cd7c3fcc72bd5778c76aa97a073a752b83d6c7ac0"
+    },
+    {
+      "path": "artifacts/policy-lab-continuous/evaluation-lab-eval-29-search.json",
+      "sha256": "a105e334d705a149944ec1408d3caca37f6dd1ddcd6d31e3a7244b27c71bee4b"
+    },
+    {
+      "path": "artifacts/policy-lab-continuous/evaluation-lab-eval-47-feature.json",
+      "sha256": "dcbc6a084e1a4e4dfdcbc11b1b10e659a1cd28b2179b85d4d02231b9ed81dd5b"
+    },
+    {
+      "path": "artifacts/policy-lab-continuous/evaluation-lab-eval-47-assisted.json",
+      "sha256": "b248bfaa7c5a9f478516ae69f483681c45b8039b01f9ef65efc87f00c84c9a5e"
+    },
+    {
+      "path": "artifacts/policy-lab-continuous/evaluation-lab-eval-47-search.json",
+      "sha256": "78b14353ae69ca45559e1b2245c890d7091cd745cbe31a5b417b244ea1fbabf7"
+    }
+  ]
+}

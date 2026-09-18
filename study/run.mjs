@@ -1,0 +1,51 @@
+import {mkdirSync,readFileSync,writeFileSync,existsSync,copyFileSync,openSync,closeSync,unlinkSync} from 'node:fs';
+import {resolve,join,relative} from 'node:path';
+import {createHash,randomUUID} from 'node:crypto';
+import {parseArgs} from 'node:util';
+import {apiKey,usageOf} from '../jev.js';
+import {requestPolicy,inspectAnswer,classifyError,MODEL} from '../decision-policies.js';
+import {newGame,move,slide,legalMoves,gameOver,heuristic} from '../public/engine.js';
+import {searchDecision} from '../public/search-solver.js';
+import {append,journal,POLICIES,Limiter,decide,stats} from './core.mjs';
+import {report} from './report.mjs';
+const {values:a}=parseArgs({options:{seeds:{type:'string',default:'20'},concurrency:{type:'string',default:'4'},phase:{type:'string',default:'evaluation'},out:{type:'string'},resume:{type:'boolean'},prepare:{type:'boolean'},report:{type:'boolean'},rpm:{type:'string',default:'1000'},tps:{type:'string',default:'200000'},'input-price':{type:'string',default:'0.042'},'output-price':{type:'string',default:'0'}}});
+const root=resolve(a.out||`artifacts/study-${a.phase}`),manifestFile=join(root,'manifest.json'),hash=x=>createHash('sha256').update(x).digest('hex');
+const count=Number(a.seeds),concurrency=Number(a.concurrency);if(!Number.isInteger(count)||count<1||!Number.isInteger(concurrency)||concurrency<1||concurrency>32||!['pilot','tuning','evaluation'].includes(a.phase))throw Error('Invalid seeds, concurrency or phase');
+const config={concurrency,rpm:Number(a.rpm),tps:Number(a.tps),reservation:32768,input_price:Number(a['input-price']),output_price:Number(a['output-price']),retries:3,model:MODEL};
+if(!Number.isInteger(config.rpm)||config.rpm<1||!Number.isFinite(config.tps)||config.tps<32768||![config.input_price,config.output_price].every(n=>Number.isFinite(n)&&n>=0))throw Error('Invalid limits or prices');
+const files=['decision-policies.js','public/policy-catalog.js','public/search-solver.js','public/engine.js','public/analysis.js','public/probabilities.js','jev-baseline.js','study/run.mjs','study/core.mjs','package-lock.json'];
+const hashes=Object.fromEntries(files.map(f=>[f,hash(readFileSync(f))]));
+mkdirSync(root,{recursive:true});let manifest;
+if(existsSync(manifestFile)){manifest=JSON.parse(readFileSync(manifestFile));if(!a.resume&&!a.report)throw Error('Study exists. Use --resume or another --out.');if(!a.report&&(JSON.stringify(manifest.hashes)!==JSON.stringify(hashes)||JSON.stringify(manifest.config)!==JSON.stringify(config)||manifest.seeds.length!==count||manifest.phase!==a.phase))throw Error('Frozen source/configuration mismatch. Resume with original flags and source, or create a separate study.');}
+else {const id=randomUUID();manifest={id,date:new Date().toISOString(),phase:a.phase,seeds:Array.from({length:count},(_,i)=>`${a.phase}/${id}/${String(i+1).padStart(3,'0')}`),policies:POLICIES,config,hashes,policy_hash:hash(JSON.stringify(hashes)),node:process.version,stop:'true game over; continue after 2048 and 4096',price_source:'https://docs.typesafe.ai/models',limits_source:'https://docs.typesafe.ai/models',bootstrap_seed:'study-ci',bootstrap_samples:2000};for(const f of files){const dest=join(root,'frozen',f);mkdirSync(resolve(dest,'..'),{recursive:true});copyFileSync(f,dest);}writeFileSync(manifestFile,JSON.stringify(manifest,null,2));}
+if(a.report){report(root);process.exit(0);}if(a.prepare){console.log('Frozen manifest and all seeds prepared: '+relative(process.cwd(),root));process.exit(0);}
+let lock;try{lock=openSync(join(root,'runner.lock'),'wx');writeFileSync(lock,String(process.pid));}catch{throw Error('Study is locked. Check runner.lock PID before removing a stale lock.');}
+const unlock=()=>{try{closeSync(lock);unlinkSync(join(root,'runner.lock'));}catch{}};process.on('exit',unlock);
+const key=apiKey();if(!key)throw Error('TYPESAFE_API_KEY missing');
+let stopping=false;process.on('SIGINT',()=>{stopping=true;console.log('Stopping after in-flight decisions; journals retained.');});process.on('SIGTERM',()=>{stopping=true;});
+const limiter=new Limiter(config),start=Date.now();append(join(root,'events.jsonl'),{type:'session_start',at:new Date().toISOString(),config});
+const jobs=manifest.seeds.flatMap((seed,index)=>POLICIES.map(policy=>({seed,policy,index})));let cursor=0,completed=0;
+const states=new Map();const heartbeat=setInterval(()=>console.log(JSON.stringify({complete:completed,total:jobs.length,minutes:+((Date.now()-start)/60000).toFixed(1),active:[...states.values()]})),30000);
+async function run({seed,policy,index}){
+ const id=`${String(index+1).padStart(3,'0')}-${policy}`,file=join(root,id+'.jsonl'),events=journal(file),last=events.filter(e=>e.type==='result').at(-1);
+ if(last?.terminal_status==='game_over'){completed++;return;}
+ const g=newGame(seed),turns=events.filter(e=>e.type==='move');for(const t of turns){if(!move(g,t.direction)||g.score!==t.score||JSON.stringify(g.board)!==JSON.stringify(t.after))throw Error('Replay mismatch '+id);}
+ let calls=0,input=0,output=0,unknown=0,retries=0;const models=new Set();for(const e of events){if(e.type==='attempt'){calls++;if(e.usage){input+=e.usage.input_tokens;output+=e.usage.output_tokens;}else unknown++;if(e.model)models.add(e.model);}if(e.type==='retry')retries++;}
+ let first2048=turns.find(t=>t.highest>=2048)?.move??null,first4096=turns.find(t=>t.highest>=4096)?.move??null,terminal='game_over',failure=null;
+ const log=e=>append(file,{at:new Date().toISOString(),...e});log({type:'start',seed,policy,resumed_moves:g.moves,policy_hash:manifest.policy_hash});states.set(id,{id,moves:g.moves});
+ try{while(!gameOver(g.board)){
+ if(stopping){terminal='interrupted';break;}const before=g.board.slice(),t=performance.now();let direction,answer=null;
+ if(policy==='heuristic')direction=heuristic(before);
+ else if(policy==='search')direction=searchDecision(before).direction;
+ else {answer=await decide({limiter,stopping:()=>stopping,request:async correction=>{try{return await requestPolicy(before,key,{score:g.score,moveNumber:g.moves},policy,correction);}catch(e){throw Object.assign(classifyError(e),{headers:e.headers??e.response?.headers,retryAfter:e.retryAfter});}},validate:r=>inspectAnswer(r.result,legalMoves(before)).error,onAttempt:({response,error,ms,correction})=>{calls++;const usage=usageOf(response?.result);if(usage){input+=usage.input_tokens;output+=usage.output_tokens;}else unknown++;const model=response?.result?.model??null;if(model)models.add(model);log({type:'attempt',move:g.moves+1,usage,model,ms,correction,error:error?{code:error.code,status:error.status}:null});},onRetry:r=>{retries++;log({type:'retry',move:g.moves+1,...r});}});direction=answer.result.answers.direction.choice;}
+ const latency=performance.now()-t;let comparison=null;
+ if(policy==='assisted'){const auditStart=performance.now(),pure=searchDecision(before),options=answer.evidence.state.options,selected=options.find(o=>o.direction===direction),best=Math.max(...options.map(o=>o.expected_quality));comparison={pure_preferred:pure.direction,agreement:direction===pure.direction,selected_has_highest_value:pure.options.find(o=>o.direction===direction).value>=pure.options[0].value-1e-8,selected_has_highest_summary:selected.expected_quality>=best,values:pure.options,presented_summaries:options,selected_value_gap:pure.options[0].value-pure.options.find(o=>o.direction===direction).value,audit_ms:performance.now()-auditStart};}
+ if(!legalMoves(before).includes(direction)||!move(g,direction))throw Object.assign(Error('Illegal decision'),{code:'illegal_move'});
+ if(comparison&&!comparison.agreement){const auditStart=performance.now();const afterSearch=searchDecision(g.board);comparison.after_best_quality=afterSearch.options[0]?.value??0;comparison.before_best_quality=comparison.values[0].value;comparison.board_quality_change=comparison.after_best_quality-comparison.before_best_quality;comparison.empty_change=g.board.filter(v=>!v).length-before.filter(v=>!v).length;comparison.audit_ms+=performance.now()-auditStart;}
+ const highest=Math.max(...g.board);if(first2048===null&&highest>=2048)first2048=g.moves;if(first4096===null&&highest>=4096)first4096=g.moves;
+ const turn={type:'move',move:g.moves,before,after:g.board.slice(),direction,score:g.score,highest,latency_ms:latency,probabilities:answer?.result.answers.direction.probabilities??null,evidence:answer?.evidence??null,comparison};log(turn);turns.push(turn);states.set(id,{id,moves:g.moves,highest,calls});await new Promise(r=>setImmediate(r));
+ }}catch(e){terminal=e.code==='interrupted'?'interrupted':'incomplete';failure=['illegal_move','illegal_choice','invalid_probabilities','rate_limit','timeout','provider_rejected','provider_unavailable','api_failure'].includes(e.code)?e.code:'runner_error';}
+ states.delete(id);const comparisons=turns.filter(t=>t.comparison).map(t=>t.comparison);
+ const result={type:'result',id,seed,policy,final_score:g.score,highest_tile:Math.max(...g.board),total_moves:g.moves,reached_2048:first2048!==null,reached_4096:first4096!==null,first_2048_move:first2048,first_4096_move:first4096,latency_ms:stats(turns.map(t=>t.latency_ms)),jev_calls:calls,input_tokens:input,output_tokens:output,unknown_usage_calls:unknown,estimated_cost_usd:(input*config.input_price+output*config.output_price)/1e6,transient_retries:retries,terminal_status:terminal,failure,model_version:models.size?[...models]:policy==='heuristic'||policy==='search'?['not applicable']:['unavailable'],policy_hash:manifest.policy_hash,agreement_rate:comparisons.length?comparisons.filter(c=>c.agreement).length/comparisons.length:null,highest_value_rate:comparisons.length?comparisons.filter(c=>c.selected_has_highest_value).length/comparisons.length:null,disagreements:comparisons.filter(c=>!c.agreement).length,recorded_at:new Date().toISOString()};log(result);append(join(root,'results.jsonl'),result);if(terminal==='game_over')completed++;console.log(JSON.stringify(result));
+}
+try{await Promise.all(Array.from({length:concurrency},async()=>{while(cursor<jobs.length&&!stopping)await run(jobs[cursor++]);}));}finally{clearInterval(heartbeat);append(join(root,'events.jsonl'),{type:'session_end',at:new Date().toISOString(),elapsed_ms:Date.now()-start});report(root);unlock();}

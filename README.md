@@ -1,58 +1,53 @@
-# Jev Arcade
+# Jev 2048
 
-Next.js + React + TypeScript, with locally owned shadcn/ui Button and Radix Tabs, a self-hosted DM Sans font, Motion tile animation, and Recharts.
-
-Local URL: **http://127.0.0.1:2048**
-
-## Run
+Play 2048 against Jev or compare bots at **http://127.0.0.1:2048/play**. Research explains what was built and what the saved results show.
 
 ```powershell
-cd C:\Users\ArmanM\jev-2048
 npm ci
+npm run dev
+```
+
+Keep `TYPESAFE_API_KEY` in ignored `.env.local`. `.env.example` lists fake placeholders. For a production build, use `npm run build` followed by `npm start`.
+
+## Bots and controls
+
+The five current Jev options use the same pinned Jev classifier with different inputs: board and rules, board analysis, expectimax, n-tuple, or both experts. Code generates legal outcomes and randomly labels them before asking Jev to choose. Direction names and specialist recommendations are hidden. Probabilities describe preference among candidates, not win odds. Expectimax and the pretrained n-tuple bot are separate specialist baselines.
+
+You vs Jev offers three opponents. Watch the bots offers input/specialist presets and a custom selector for two to five boards. Historical policies and experiments remain in source and saved results but are not in the main selector.
+
+Run, Pause, Step, Restart, speed and seed controls work independently of any one board finishing. Games continue past 2048 to true game over. Normal and Fast animate; Fast Jev adds no intentional delay, while local animated moves retain their existing 140 ms delay. Local Ultra batches 100 moves for Expectimax/N-tuple and rejects stale batches after Pause/Restart. Remote Ultra is disabled. No silent fallback is used.
+
+The same seed repeats the initial board and spawn stream. Different moves alter the set of empty cells, so later spawn locations can differ. Jev responses are not assumed deterministic.
+
+## Native n-tuple
+
+On this Windows workspace, local inference uses the unchanged sibling `jev-2048-models/matched-evaluation/ntuple-bridge.exe` and verified 4×6 weights. Public inference uses the persistent Linux worker in `deploy/ntuple`, accessed only through the server-side proxy. Neither weights nor binaries belong in Git. Native compute time excludes process communication, network and service wake-up.
+
+The frozen bridge supports ranks through 32,768. If any legal outcome exceeds that representation, n-tuple-dependent bots report an explicit unsupported-board error. The learned evaluation is never replaced or changed to work around it.
+
+## Inspect and match analytics
+
+Inspect records before/after boards, anonymous mappings, supplied evidence, reported probabilities, selected move, agreement, tokens and separated stage timings. It shows observable data, not hidden reasoning. Charts align scores by move number and keep live session data separate from saved studies.
+
+Memory retains 128 detailed moves and 2,000 numeric points per board. Older history is archived in IndexedDB and loaded on demand; Restart deletes the prior board's history. Evidence is bounded to 65,536 serialized characters per move. Storage failure is explicit and never affects gameplay. Deferred specialist audits are asynchronous, with at most three pending; unavailable values remain unknown.
+
+## Verification and deployment
+
+```powershell
+npm run typecheck
+npm run test:release
 npm run build
 npm start
+# Another terminal; mock Jev/native responses, no paid calls:
+npm run test:release:browser
 ```
 
-Development: `npm run dev`. The existing ignored `.env.local` already contains the server-only TYPESAFE_API_KEY. On a new checkout, copy `.env.example` and fill its placeholders locally. Never overwrite an existing configured file. Never use NEXT_PUBLIC_ for the API key.
+Native fixed-board parity has a separate test requiring the sibling Windows model workspace: `node --import tsx --test test/ntuple.test.ts`. The Docker service includes its own fixed-board smoke test. No validation command automatically runs historical studies or full games.
 
-## Play
+See [DEPLOYMENT.md](DEPLOYMENT.md) for Hugging Face, Vercel, shared rate limits, required secrets and rollback. Public inference fails closed until the shared protection is configured. No external deployment has been performed.
 
-Choose You vs Jev or Jev vs Heuristic. Arrow keys, direction buttons and swipes control the human board. Step makes one decision; Normal waits 800 ms between responses; Fast has no intentional delay. Pause prevents the next request and allows the current move to finish. Restart resets both boards and ignores pending responses. The request lock stays held until the outstanding request settles.
+## Research and attribution
 
-There is no game move or API-call cap. In a bot match, the surviving bot continues until both boards end. Winner is determined by final score. API errors stop automatic play and offer Retry. A heuristic is never silently substituted for Jev.
+`public/research-data.json` contains verified descriptive results and original artifact hashes. `public/diagnostic-warm.json` contains three saved warm diagnostic samples. Neither proves superiority of current Jev variants. Original artifacts and experimental implementations are preserved; no historical study is rerun by the app or build.
 
-Independent copies of the seeded random generator produce the same start. Different choices change empty cells and can produce different spawn positions. Jev decisions need not repeat.
-
-## Inspect decisions
-
-How it works shows each selected move's exact prior board, engine-calculated legal options, Jev's actual choice distribution, and the resulting board with its spawn and score change. The latest 40 decisions are available for replay. Before the first call, a sample is explicitly labeled and has no invented probabilities or timing.
-
-The current Jev policy receives board, score, move number, highest tile, legal directions, and outcome features. Merge metadata now comes directly from the engine. Strategy tuning is outside this redesign. No performance claim is made from the earlier three-seed/eight-turn exploration, which did not preserve the original prompt exactly and cannot establish superiority.
-
-Charts align each player's actual points by move number. No values are carried forward after a player stops. The tooltip and keyboard/touch range inspector expose scores. Missing reported token usage is labeled unavailable.
-
-## Checks
-
-```powershell
-npm test
-npm run typecheck
-npm run build
-# Production server must already be running:
-npm run test:browser
-# Optional: 16 real Jev requests and final screenshots.
-$env:LIVE_JEV='1'
-npm run test:browser
-Remove-Item Env:LIVE_JEV
-```
-
-The browser suite uses installed Microsoft Edge. Routine browser tests explicitly stub provider responses. They verify font loading, boards above the fold at 1366×768, keyboard and real touch input, both modes, a complete simulated match, score chart tooltip, sample/live replay consistency, Pause/Restart while a response is pending, Retry, and no overlaps. Live mode makes genuine provider calls.
-
-Before/after desktop and mobile screenshots, explainer screenshots, and real decision evidence are in the ignored `artifacts/` folder. Legacy static UI/server files remain for regression tests; Next.js is the active app.
-
-## Deployment
-
-See [DEPLOYMENT.md](DEPLOYMENT.md). `npx vercel@latest whoami` was checked and requires account login. No public deployment was created.
-
-Public requests fail closed until Redis, Turnstile and the signing secret are configured. This is enforced server-side, including Vercel production and preview environments. The key never goes to the browser.
-
-Remaining deployment checks: live Redis/Turnstile integration and a real move on the deployed domain. Cross-browser coverage beyond Edge and long-running real Jev games are not claimed.
+See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md), [SEARCH-SOLVER.md](SEARCH-SOLVER.md), and historical result documents. The native source is MIT-licensed TDL2048+ by Hung Guei. This project's Jev orchestration and UI are separate from upstream algorithms.

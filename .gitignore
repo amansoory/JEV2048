@@ -7,3 +7,11 @@ artifacts/
 .vercel/
 *.tsbuildinfo
 next-env.d.ts
+
+# Native checkpoints and generated service files stay outside Git.
+*.w
+*.w.xz
+*.exe
+__pycache__/
+deploy/ntuple/model/
+deploy/ntuple/native/ntuple-bridge

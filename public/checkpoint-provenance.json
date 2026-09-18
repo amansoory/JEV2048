@@ -1,0 +1,38 @@
+{
+  "repository": "https://github.com/moporgic/TDL2048",
+  "commit": "a99f620aec0d30a75943a4c9646743f1f53b0197",
+  "license": "MIT, Copyright (c) 2021 Hung Guei",
+  "url": "https://moporgic.info/2048/model/4x6patt.w.xz",
+  "compressed_bytes": 164834696,
+  "compressed_sha256": "d779836e30da37bb72e83438ad8dedd6fd5358063b48e49509ec336aeb3cc6d9",
+  "decompressed_bytes": 268435545,
+  "decompressed_sha256": "41292737878c8663f5928acf7e44d03036635db9f74db62de950c1e4dc7e141d",
+  "xz_integrity": "decompressed successfully with standard-library lzma integrity checking",
+  "checksum_provenance": "Locally computed; no publisher SHA-256 supplied",
+  "weight_format": {
+    "container": "TDL2048 binary .w, container version 0, table version 4",
+    "tables": [
+      {
+        "pattern": "012345",
+        "entries": 16777216,
+        "dtype": "little-endian float32"
+      },
+      {
+        "pattern": "456789",
+        "entries": 16777216,
+        "dtype": "little-endian float32"
+      },
+      {
+        "pattern": "012456",
+        "entries": 16777216,
+        "dtype": "little-endian float32"
+      },
+      {
+        "pattern": "45689a",
+        "entries": 16777216,
+        "dtype": "little-endian float32"
+      }
+    ]
+  },
+  "documented_build_command": "make"
+}

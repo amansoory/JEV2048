@@ -1,2 +1,2 @@
-import Arcade from '@/components/arcade';
-export default function Page(){return <Arcade/>;}
+import {redirect} from 'next/navigation';
+export default function Page(){redirect('/play');}

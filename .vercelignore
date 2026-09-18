@@ -1,0 +1,10 @@
+artifacts/
+node_modules/
+.git/
+.env*
+!.env.example
+deploy/
+test/
+study/
+*.log
+*.tsbuildinfo
