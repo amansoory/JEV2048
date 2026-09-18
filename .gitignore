@@ -15,3 +15,6 @@ next-env.d.ts
 __pycache__/
 deploy/ntuple/model/
 deploy/ntuple/native/ntuple-bridge
+deploy/ntuple/**/*.partial
+deploy/ntuple/compiler-version.txt
+deploy/ntuple/executable.sha256

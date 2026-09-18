@@ -44,7 +44,7 @@ npm run test:release:browser
 
 Native fixed-board parity has a separate test requiring the sibling Windows model workspace: `node --import tsx --test test/ntuple.test.ts`. The Docker service includes its own fixed-board smoke test. No validation command automatically runs historical studies or full games.
 
-See [DEPLOYMENT.md](DEPLOYMENT.md) for Hugging Face, Vercel, shared rate limits, required secrets and rollback. Public inference fails closed until the shared protection is configured. No external deployment has been performed.
+See [DEPLOYMENT.md](DEPLOYMENT.md) for Oracle Cloud, Vercel, shared rate limits, required secrets and rollback. Public inference fails closed until the shared protection is configured. No external deployment has been performed.
 
 ## Research and attribution
 

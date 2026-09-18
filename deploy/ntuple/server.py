@@ -79,7 +79,7 @@ class Handler(BaseHTTPRequestHandler):
  def do_POST(self):
   if self.path!='/v1/evaluate':return self.reply(404,{'code':'not_found'})
   supplied=self.headers.get('Authorization','');expected='Bearer '+os.environ.get('NTUPLE_SERVICE_SECRET','')
-  if not os.environ.get('NTUPLE_SERVICE_SECRET') or not hmac.compare_digest(supplied,expected):return self.reply(401,{'code':'unauthorized'})
+  if not os.environ.get('NTUPLE_SERVICE_SECRET') or not hmac.compare_digest(supplied.encode('utf-8'),expected.encode('utf-8')):return self.reply(401,{'code':'unauthorized'})
   if self.headers.get('Transfer-Encoding') or self.headers.get('Content-Type','').split(';')[0]!='application/json':return self.reply(400,{'code':'invalid_board'})
   try:length=int(self.headers.get('Content-Length','0'))
   except ValueError:return self.reply(400,{'code':'invalid_board'})
@@ -116,6 +116,13 @@ class Server(ThreadingHTTPServer):
 if __name__=='__main__':
  if len(os.environ.get('NTUPLE_SERVICE_SECRET',''))<24:raise SystemExit('Configure NTUPLE_SERVICE_SECRET before startup')
  threading.Thread(target=WORKER.start,daemon=True).start()
- try:Server(('0.0.0.0',int(os.environ.get('PORT','7860'))),Handler).serve_forever()
+ server=Server((os.environ.get('BIND_HOST','127.0.0.1'),int(os.environ.get('PORT','7860'))),Handler)
+ def monitor():
+  while WORKER.state!='unavailable':time.sleep(1)
+  server.shutdown()
+ threading.Thread(target=monitor,daemon=True).start()
+ try:server.serve_forever()
  finally:
+  server.server_close()
   if WORKER.process:WORKER.process.kill()
+ raise SystemExit(1) # Let systemd restart after native failure; never substitute another bot.

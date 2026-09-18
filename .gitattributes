@@ -3,3 +3,6 @@ deploy/ntuple/TDL2048/** -text
 deploy/ntuple/native/ntuple-bridge.cpp -text
 deploy/ntuple/Dockerfile text eol=lf
 deploy/ntuple/*.py text eol=lf
+deploy/ntuple/*.sh text eol=lf
+deploy/ntuple/*.service text eol=lf
+deploy/ntuple/*.conf text eol=lf

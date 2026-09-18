@@ -18,7 +18,7 @@ COPY --from=build /opt/ntuple/compiler-version.txt ./
 COPY --chown=1000:1000 server.py provenance.json ./
 COPY TDL2048/LICENSE.md ./TDL2048-MIT.txt
 USER 1000
-ENV PYTHONUNBUFFERED=1 PORT=7860
+ENV PYTHONUNBUFFERED=1 PORT=7860 BIND_HOST=0.0.0.0
 EXPOSE 7860
 HEALTHCHECK --interval=30s --timeout=3s --start-period=60s CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:7860/ready',timeout=2)"
 CMD ["python", "server.py"]

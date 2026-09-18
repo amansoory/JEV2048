@@ -1,20 +1,16 @@
 # Deploy Jev 2048
 
-The web app runs on Vercel. The frozen n-tuple model runs in a separate Linux Docker service. Deploy the model service first. There is no Windows executable or checkpoint in the web deployment. The two original local model and research workspaces remain untouched.
+The web app runs on Vercel. The frozen n-tuple model runs in a separate Linux Docker service. Deploy the model service first, after the no-deployment instruction is lifted. There is no Windows executable or checkpoint in the web deployment. The two original local model and research workspaces remain untouched.
 
 ## Current handoff
 
-The application builds locally. The Linux service matches the verified Windows selector on three fixed boards, including candidate values. No new benchmark or provider call was made during release preparation. External deployment is blocked by missing Vercel/Hugging Face authentication and unconfigured shared services. There is no GitHub remote on the local repository. No external resources or production secrets were created.
+The application builds locally. The Linux service matches the verified Windows selector on three fixed boards, including candidate values. No new benchmark or provider call was made during release preparation. External deployment is blocked by missing Vercel authentication and Oracle VM access and unconfigured shared services. The GitHub remote is https://github.com/amansoory/JEV2048.git. No external resources or production secrets were created.
 
-## 1. Publish the native service
+## 1. Publish the native service on Oracle Cloud
 
-1. Sign in to Hugging Face and create a **Docker Space** on CPU hardware. A public Space works with the application's own authenticated endpoint; private-Space platform authentication is not implemented.
-2. Upload the contents of `deploy/ntuple/` to the Space root, preserving `TDL2048/`, `native/`, hidden files, README front matter and the Dockerfile. Do not upload model weights or local executables.
-3. Add `NTUPLE_SERVICE_SECRET` through **Settings → Secrets**, using a cryptographically random value of at least 24 characters. This must match Vercel's server variable. Do not print or commit it.
-4. Wait for the image build and check `https://YOUR-SPACE.hf.space/ready`. It must return 200 and `status: ready`. Hash mismatch fails the build/startup.
-5. Run the fixed-board smoke test from `deploy/ntuple`: set `NTUPLE_TEST_URL` to the HTTPS Space URL and supply `NTUPLE_SERVICE_SECRET` through the environment, then `node smoke.mjs`. It performs no games or Jev requests.
+Use [deploy/ntuple/ORACLE.md](deploy/ntuple/ORACLE.md). It includes the exact A1 Flex size (1 OCPU, 6 GB RAM, 50 GB boot disk), Ubuntu ARM build, firewall ports, persistent systemd worker, Nginx HTTPS and fixed-board smoke test. No Hugging Face service is used.
 
-The Dockerfile uses pinned image digests and a dated Debian snapshot. The upstream source, bridge and checkpoint hashes are recorded in the service directory. One persistent worker loads the 4×6 weights once. The native encoding supports tiles through 32,768 and rejects any board whose legal outcomes exceed that. No fallback is allowed. Service sleep can cause the first request to time out; visitors can Retry. Hosted network/wake-up time is not native compute latency. Remote Ultra is disabled; local Ultra is unchanged.
+The service authenticates `Authorization: Bearer <NTUPLE_SERVICE_SECRET>`. Only HTTPS port 443 is exposed for inference; native port 7860 is loopback-only. Original source, greedy selection and checkpoint are unchanged. ARM parity remains a release prerequisite. Local native mode and hosted Ultra restrictions are unchanged.
 
 ## 2. Configure shared protection
 
@@ -25,8 +21,8 @@ Server-only Vercel variables:
 | Variable | Value |
 | --- | --- |
 | TYPESAFE_API_KEY | Existing local Jev credential, transferred privately |
-| NTUPLE_SERVICE_URL | HTTPS Space URL, e.g. https://YOUR-SPACE.hf.space |
-| NTUPLE_SERVICE_SECRET | Same runtime secret as the Space |
+| NTUPLE_SERVICE_URL | Oracle HTTPS hostname, e.g. https://ntuple.example.com |
+| NTUPLE_SERVICE_SECRET | Same secret as /etc/jev-ntuple.env on Oracle |
 | UPSTASH_REDIS_REST_URL | Shared Redis REST endpoint |
 | UPSTASH_REDIS_REST_TOKEN | Shared Redis REST credential |
 | SESSION_SECRET | Cryptographically random secret of at least 32 bytes |
@@ -45,9 +41,8 @@ From PowerShell:
 
 ```powershell
 cd C:\Users\ArmanM\jev-2048
-# Create an empty dedicated repository through GitHub's website first.
-git remote add origin https://github.com/YOUR-ACCOUNT/jev-2048.git
-git push -u origin HEAD
+# Only push after deployment is authorized if GitHub auto-deployment is connected.
+git push -u origin HEAD:main
 npx vercel@latest login
 npx vercel@latest link
 ```
@@ -66,7 +61,7 @@ npm start
 npm run test:release:browser
 ```
 
-When the Space and shared protection are ready:
+When the Oracle service and shared protection are ready, and deployment is authorized:
 
 ```powershell
 npx vercel@latest --prod
@@ -88,6 +83,6 @@ No authenticated CLI session exists on this machine at handoff, so this command 
 
 `.env.local`, generated weights/binaries, screenshots, raw artifacts and build output are ignored. Only sanitized research summaries and their source hashes ship publicly. The diagnostics are frozen single samples, not benchmark averages. Analytics remain in the visitor's browser: 128 detailed records and 2,000 numeric points in memory per board; older moves are archived in IndexedDB until Restart, subject to browser quota. Evidence has a 65,536-character bound. Unknown timing/usage stays unavailable.
 
-To disable public Jev, set the daily budget to 0 and redeploy. To disable n-tuple, pause the Space or unset its URL and redeploy; requests fail explicitly. Roll back Vercel to a previous verified deployment and the Space to its matching source commit. Preserve checkpoint hashes and never replace failed model responses with another bot.
+To disable public Jev, set the daily budget to 0 and redeploy. To disable n-tuple, stop the Oracle systemd service or unset its URL and redeploy; requests fail explicitly. Roll back Vercel to a previous verified deployment and the Oracle service to its matching source commit. Preserve checkpoint hashes and never replace failed model responses with another bot.
 
-Official references: [Vercel CLI deployment](https://vercel.com/docs/cli/deploy), [Docker Spaces and secrets](https://huggingface.co/docs/hub/spaces-sdks-docker), [Turnstile validation](https://developers.cloudflare.com/turnstile/get-started/server-side-validation/), [Upstash Redis](https://upstash.com/docs/redis/overall/getstarted).
+Official references: [Vercel CLI deployment](https://vercel.com/docs/cli/deploy), [Oracle Always Free resources](https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm), [Turnstile validation](https://developers.cloudflare.com/turnstile/get-started/server-side-validation/), [Upstash Redis](https://upstash.com/docs/redis/overall/getstarted).

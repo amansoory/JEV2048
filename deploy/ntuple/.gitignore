@@ -4,3 +4,6 @@ __pycache__/
 *.env
 native/ntuple-bridge
 *.exe
+*.partial
+compiler-version.txt
+executable.sha256
