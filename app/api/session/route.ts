@@ -1,9 +1,8 @@
 import {NextRequest,NextResponse} from 'next/server';
-import {configured,makeSession,publicRequest,sameOrigin,visitorIP} from '@/lib/protection';
+import {turnstileConfigured,makeSession,publicRequest,sameOrigin,visitorIP} from '@/lib/protection';
 export async function POST(req:NextRequest){
   if(!sameOrigin(req))return NextResponse.json({error:'Origin refused'},{status:403});
-  if(!publicRequest(req))return NextResponse.json({ok:true});
-  if(!configured())return NextResponse.json({error:'Public play needs shared protection configuration.'},{status:503});
+  if(!publicRequest(req)||!turnstileConfigured())return NextResponse.json({ok:true});
   try{
     const raw=await req.text();if(raw.length>4096)return NextResponse.json({error:'Invalid request'},{status:400});
     const {token}=JSON.parse(raw);if(typeof token!=='string'||token.length>2048)throw Error();
