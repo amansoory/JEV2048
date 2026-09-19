@@ -15,7 +15,12 @@ test('optional public protection preserves locks, limits and configured provider
   const status=await (await GET(req())).json();assert.equal(status.ready,true);assert.equal(status.verified,true);
   assert.equal((await POST(req())).status,200);
   const first=await acquire(req(),'first');assert.equal(first.error,undefined);
-  assert.equal((await acquire(req(),'first')).code,'rate_limit');assert.equal((await acquire(req(),'other')).code,'rate_limit');
+  assert.equal((await acquire(req(),'first')).code,'rate_limit');
+  const second=await acquire(req(),'other');assert.equal(second.error,undefined);
+  assert.equal((await acquire(req(),'third')).code,'rate_limit');
+  await second.release();await second.release();
+  const replacement=await acquire(req(),'replacement');assert.equal(replacement.error,undefined);
+  assert.equal((await acquire(req(),'third')).code,'rate_limit');await replacement.release();
   await first.release();const next=await acquire(req(),'first');assert.equal(next.error,undefined);await next.release();
   const locks=[];for(let i=0;i<8;i++){const lock=await acquire(req('192.0.2.'+(i+10)),'capacity','native');assert.equal(lock.error,undefined);locks.push(lock);}
   assert.equal((await acquire(req('192.0.2.99'),'capacity','native')).code,'rate_limit');for(const lock of locks)await lock.release();
