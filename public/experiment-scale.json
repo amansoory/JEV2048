@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "dashboard": {
+    "source": "TypeSafe dashboard totals supplied by project owner; no dashboard export inspected",
+    "project_attribution": "Owner confirmed all traffic belongs to Jev 2048",
+    "tokens": 133131407,
+    "requests": 77928,
+    "spend_usd": 5.45,
+    "range_label": "Last 7 days",
+    "range_start": null,
+    "range_end": null,
+    "timezone": null,
+    "filter": "All traffic",
+    "coverage": "Development, testing, evaluation and live use are not separated in this total. Failed/retried request inclusion in provider billing is unverified.",
+    "token_definition": "Dashboard-reported tokens; input/output split not supplied.",
+    "activity_days": 2,
+    "activity_source": "Owner confirmed Jev was used only during the last two days within the seven-day dashboard window."
+  },
+  "pilot": {
+    "date": "2026-09-18",
+    "games": 8,
+    "seeds": 2,
+    "completed_jev_moves": 5353,
+    "requests": 5353,
+    "source_files": [
+      {
+        "path": "artifacts/study-pilot-2026-09-18/001-strategy.jsonl",
+        "sha256": "f8adc39e48024698923df2cb158e507d428bd1d1385088e1701366466e2f00a8",
+        "completed_moves": 94
+      },
+      {
+        "path": "artifacts/study-pilot-2026-09-18/001-raw.jsonl",
+        "sha256": "7e61119afbb3ab9359a68c540adb81f33bc643020cfd98cb0a9905248a2ee6a4",
+        "completed_moves": 97
+      },
+      {
+        "path": "artifacts/study-pilot-2026-09-18/001-feature.jsonl",
+        "sha256": "c94594d134d107bbdaa6512409d6967ad6b279f4d8f6cbf5b768fcf5f4c863a8",
+        "completed_moves": 434
+      },
+      {
+        "path": "artifacts/study-pilot-2026-09-18/002-raw.jsonl",
+        "sha256": "282aa7a0f0c5298a38130e557ce9650c7dd15ecfaafb0611123157e1ba08782c",
+        "completed_moves": 111
+      },
+      {
+        "path": "artifacts/study-pilot-2026-09-18/002-strategy.jsonl",
+        "sha256": "359544fd3c399def5d358074e4d51ce6593558b6850e3d823139b142a6078040",
+        "completed_moves": 144
+      },
+      {
+        "path": "artifacts/study-pilot-2026-09-18/002-feature.jsonl",
+        "sha256": "b40ce1913d741938f34e33a36b60c91c0537f9e787d114bb400277c52c06a059",
+        "completed_moves": 914
+      },
+      {
+        "path": "artifacts/study-pilot-2026-09-18/001-assisted.jsonl",
+        "sha256": "921f8bf98626efa89ce47688b894c0487cc2bed2a000f4d77b3c0746e9ebf327",
+        "completed_moves": 1946
+      },
+      {
+        "path": "artifacts/study-pilot-2026-09-18/002-assisted.jsonl",
+        "sha256": "738b832a9484daec9a821adf5b446da45f2066d166ce1397dfb86a990d6d59df",
+        "completed_moves": 1613
+      }
+    ],
+    "scope": "This pilot only, not the project lifetime or dashboard-wide decision total."
+  }
+}
