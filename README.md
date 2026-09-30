@@ -2,12 +2,16 @@
 
 [Live demo](https://jev-2048.vercel.app/play)
 
-Play 2048 against Jev or compare bots at **http://127.0.0.1:2048/play**. Research explains what was built and what the saved results show.
+Play 2048 against Jev or compare bots. Research explains what was built and what the saved results show.
+
+## Local development
 
 ```powershell
 npm ci
 npm run dev
 ```
+
+After starting the development server, open [the local app](http://127.0.0.1:2048/play).
 
 Keep `TYPESAFE_API_KEY` in ignored `.env.local`. `.env.example` lists fake placeholders. For a production build, use `npm run build` followed by `npm start`.
 
