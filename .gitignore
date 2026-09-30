@@ -18,3 +18,7 @@ deploy/ntuple/native/ntuple-bridge
 deploy/ntuple/**/*.partial
 deploy/ntuple/compiler-version.txt
 deploy/ntuple/executable.sha256
+
+# Local assistant instructions (all directories)
+[Aa][Gg][Ee][Nn][Tt][Ss].[Mm][Dd]
+[Cc][Ll][Aa][Uu][Dd][Ee].[Mm][Dd]
