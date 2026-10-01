@@ -1,11 +1,17 @@
 # Jev 2048
 
-Play 2048 against Jev or compare bots at **http://127.0.0.1:2048/play**. Research explains what was built and what the saved results show.
+[Live demo](https://jev-2048.vercel.app/play)
+
+Play 2048 against Jev or compare bots. Research explains what was built and what the saved results show.
+
+## Local development
 
 ```powershell
 npm ci
 npm run dev
 ```
+
+After starting the development server, open [the local app](http://127.0.0.1:2048/play).
 
 Keep `TYPESAFE_API_KEY` in ignored `.env.local`. `.env.example` lists fake placeholders. For a production build, use `npm run build` followed by `npm start`.
 
@@ -44,7 +50,7 @@ npm run test:release:browser
 
 Native fixed-board parity has a separate test requiring the sibling Windows model workspace: `node --import tsx --test test/ntuple.test.ts`. The Docker service includes its own fixed-board smoke test. No validation command automatically runs historical studies or full games.
 
-See [DEPLOYMENT.md](DEPLOYMENT.md) for Oracle Cloud, Vercel, shared rate limits, required secrets and rollback. Public inference fails closed until the shared protection is configured. No external deployment has been performed.
+See [DEPLOYMENT.md](DEPLOYMENT.md) for Oracle Cloud, Vercel, shared rate limits, required secrets and rollback. Public inference fails closed until the shared protection is configured. Try the deployed app using the live demo link above.
 
 ## Research and attribution
 
